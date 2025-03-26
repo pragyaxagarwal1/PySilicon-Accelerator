@@ -1,34 +1,34 @@
-`timescale 1ns/1ps
-
-module ConvolutionUnit(
-    input clk, rst,
-    input [71:0] image,
-    input [71:0] kernel,
-    output reg [15:0] result  // result is reg, so update inside always block
+module ConvolutionUnit (
+    input clk, 
+    input rst, 
+    input [71:0] image,   // 9 pixels (each 8-bit), packed in a single 72-bit bus
+    input [71:0] kernel,  // 9 kernel values (each 8-bit), packed in a single 72-bit bus
+    output reg [15:0] result  // Output Pixel Value
 );
-    
-    reg [15:0] sum; 
+
+    integer i;
+    reg [15:0] sum;
+    reg [7:0] image_array [0:8];  // Internal unpacked array for image
+    reg [7:0] kernel_array [0:8]; // Internal unpacked array for kernel
+
+    always @(*) begin
+        // Unpacking the 72-bit input buses into 8-bit array elements
+        for (i = 0; i < 9; i = i + 1) begin
+            image_array[i] = image[i*8 +: 8];
+            kernel_array[i] = kernel[i*8 +: 8];
+        end
+    end
 
     always @(posedge clk or posedge rst) begin
-        if (rst) begin
+        if (rst)
             sum <= 16'b0;
-            result <= 16'b0;  // Reset result
-        end
         else begin
-            // Element-wise multiplication and summation for 3x3 convolution
-            sum <=  (image[71:64] * kernel[71:64]) +
-                    (image[63:56] * kernel[63:56]) +
-                    (image[55:48] * kernel[55:48]) +
-                    (image[47:40] * kernel[47:40]) +
-                    (image[39:32] * kernel[39:32]) +
-                    (image[31:24] * kernel[31:24]) +
-                    (image[23:16] * kernel[23:16]) +
-                    (image[15:8]  * kernel[15:8])  +
-                    (image[7:0]   * kernel[7:0]);
-
-            result <= sum;  // Move result update inside always block
+            sum = 0;
+            for (i = 0; i < 9; i = i + 1) begin
+                sum = sum + image_array[i] * kernel_array[i];
+            end
+            result <= sum;
         end
     end
 
 endmodule
-
